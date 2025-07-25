@@ -139,6 +139,9 @@ python main.py
 - User: "How much to Pris?"
 - Assistant: "I'll check the ticket price for you. I found the price for Paris (I noticed you meant Paris) - a return ticket costs $899. Paris is the City of Light, famous for art, fashion, and cuisine!"
 
+- User: "Price to Tokio please"
+- Assistant: "I'll check the ticket price for you. I found the price for Tokyo (I noticed you meant Tokyo) - a return ticket costs $1400. Tokyo is a modern metropolis blending traditional and contemporary Japanese culture!"
+
 **Budget Shopping:**
 
 - User: "I have a budget of $800, what can you recommend?"
