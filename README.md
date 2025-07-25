@@ -31,22 +31,24 @@ A sophisticated AI-powered airline assistant built with OpenAI's GPT-4 and Gradi
 
 ### Flexible City Name Recognition
 
-The AI assistant can understand various city name formats and alternative names:
+The AI assistant can understand various city name formats, alternative names, and even handle common typos:
 
-| Official Name | Alternative Names Supported |
-|---------------|----------------------------|
-| **London** | London City, Greater London |
-| **Paris** | Paris City, City of Light |
-| **Tokyo** | Tokyo City, Tokyo Metropolitan |
-| **Berlin** | Berlin City |
-| **Ho Chi Minh City** | Ho Chi Minh, HCMC, Saigon, Sai Gon, Ho Chi Minh Ville |
+| Official Name        | Alternative Names & Typos Supported                                                                    |
+| -------------------- | ------------------------------------------------------------------------------------------------------ |
+| **London**           | London City, Greater London, Londn, Londom, Lndon                                                      |
+| **Paris**            | Paris City, City of Light, Pris, Pariz, Pariss                                                         |
+| **Tokyo**            | Tokyo City, Tokyo Metropolitan, Tokio, Toky0, Tokoy                                                    |
+| **Berlin**           | Berlin City, Berln, Belin, Berling                                                                     |
+| **Ho Chi Minh City** | Ho Chi Minh, HCMC, HCM, Saigon, Sai Gon, Sigon, Saigone, Ho Chi Min, Ho Chi Ming, Hochi Minh, Hochimin |
+
+**Smart Typo Detection:** The system uses fuzzy matching to detect and correct common spelling mistakes, ensuring users get accurate results even with typos.
 
 ### Multishot Prompting Examples
 
 The AI assistant has been trained with specific examples to handle:
 
 - Direct price inquiries with flexible city names
-- Budget-based travel recommendations  
+- Budget-based travel recommendations
 - Destination comparisons and suggestions
 - Cultural information requests
 - Graceful handling of unknown information
@@ -132,6 +134,11 @@ python main.py
 - User: "What's the price to Saigon?"
 - Assistant: "I'll check the ticket price to Saigon for you. A return ticket to Ho Chi Minh City (Saigon) costs $1500. Ho Chi Minh City is Vietnam's bustling economic hub with rich cultural heritage!"
 
+**Typo Correction:**
+
+- User: "How much to Pris?"
+- Assistant: "I'll check the ticket price for you. I found the price for Paris (I noticed you meant Paris) - a return ticket costs $899. Paris is the City of Light, famous for art, fashion, and cuisine!"
+
 **Budget Shopping:**
 
 - User: "I have a budget of $800, what can you recommend?"
@@ -172,12 +179,14 @@ The system uses sophisticated prompt engineering with:
 
 ```python
 # Two main functions available to the AI:
-get_ticket_price(destination_city)      # Individual price lookup with city name normalization
+get_ticket_price(destination_city)      # Individual price lookup with city name normalization and typo correction
 get_all_destinations()                  # Complete destination catalog
 
-# City name normalization handles variations like:
+# City name normalization handles variations and typos like:
 normalize_city_name("Saigon") → "hochiminh"
-normalize_city_name("HCMC") → "hochiminh" 
+normalize_city_name("Pris") → "paris"  # typo correction
+normalize_city_name("Tokio") → "tokyo"  # alternative spelling
+normalize_city_name("HCMC") → "hochiminh"
 normalize_city_name("Ho Chi Minh City") → "hochiminh"
 ```
 
@@ -252,10 +261,12 @@ conda env list
 
 **Function Calling Improvements:**
 
-- Structured data responses
+- Structured data responses with typo correction feedback
 - Multiple query types supported
+- Fuzzy matching for spelling mistakes
 - Error handling and fallbacks
 - Rich destination information
+- Smart suggestions for unrecognized inputs
 
 ### Getting Help
 

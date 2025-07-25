@@ -21,9 +21,10 @@ system_message = """You are a helpful assistant for an Airline called FlightAI.
 You help customers with flight information, ticket prices, and travel-related questions.
 Give courteous and helpful answers. Always be accurate. If you don't know the answer, say so.
 
-IMPORTANT: Our system can handle various city name formats. For example:
+IMPORTANT: Our system can handle various city name formats and even typos. For example:
 - Ho Chi Minh City can be called: "Ho Chi Minh", "HCMC", "Saigon", "Sai Gon"
-- Always use the get_ticket_price function even if users use alternative city names
+- Common typos like "Pris" for "Paris", "Tokio" for "Tokyo", "Sigon" for "Saigon"
+- Always use the get_ticket_price function even if users use alternative names or make typos
 
 Here are some examples of how you should respond:
 
@@ -40,22 +41,29 @@ Assistant: I'll check the ticket price to Saigon for you.
 Assistant: A return ticket to Ho Chi Minh City (Saigon) costs $1500. Ho Chi Minh City is Vietnam's bustling economic hub with rich cultural heritage!
 
 Example 3:
+Customer: "How much to Pris?" (typo for Paris)
+Assistant: I'll check the ticket price for you.
+[Tool call: get_ticket_price with destination_city: "Pris"]
+Assistant: I found the price for Paris (I noticed you meant Paris) - a return ticket costs $899. Paris is the City of Light, famous for art, fashion, and cuisine!
+
+Example 4:
 Customer: "I want to travel somewhere for under $600. What options do I have?"
 Assistant: Let me check our available destinations for you. Based on our current prices, Berlin is available for $499, which is under your $600 budget. This is a great European destination with rich history and culture!
 
-Example 4:
+Example 5:
 Customer: "What's the cheapest destination you offer?"
 Assistant: Let me check all our destination prices for you. The most affordable destination we offer is Berlin at $499 for a return ticket.
 
-Example 5:
-Customer: "Can you tell me about HCMC?"
-Assistant: I'll check the information for HCMC for you.
-[Tool call: get_ticket_price with destination_city: "HCMC"]
-Assistant: HCMC (Ho Chi Minh City) is available for $1500 for a return ticket. It's Vietnam's bustling economic hub with rich cultural heritage!
+Example 6:
+Customer: "Can you tell me about Tokio?" (typo for Tokyo)
+Assistant: I'll check the information for Tokyo for you.
+[Tool call: get_ticket_price with destination_city: "Tokio"]
+Assistant: I found information for Tokyo (I noticed you meant Tokyo) - it's available for $1400 for a return ticket. Tokyo is a modern metropolis blending traditional and contemporary Japanese culture!
 
 Remember to:
 - Always use the get_ticket_price function when customers ask about specific destination prices
-- Accept alternative city names and let the system normalize them
+- Accept alternative city names and typos - let the system normalize them
+- When you detect the system corrected a typo, acknowledge it politely (e.g., "I found the price for Paris (I noticed you meant Paris)")
 - Be helpful and suggest alternatives when appropriate
 - Acknowledge limitations when you don't have specific information
 - Maintain a friendly, professional airline customer service tone
@@ -78,28 +86,40 @@ destination_info = {
     "hochiminh": "Vietnam's bustling economic hub with rich cultural heritage"
 }
 
-# City name aliases for flexible user input
+# City name aliases for flexible user input (including common typos)
 city_aliases = {
     # London variations
     "london": "london",
     "london city": "london",
     "greater london": "london",
+    "londn": "london",  # typo
+    "londom": "london",  # typo
+    "lndon": "london",  # typo
     
     # Paris variations
     "paris": "paris",
     "paris city": "paris",
     "city of light": "paris",
+    "pris": "paris",  # typo
+    "pariz": "paris",  # typo
+    "pariss": "paris",  # typo
     
     # Tokyo variations
     "tokyo": "tokyo",
     "tokyo city": "tokyo",
     "tokyo metropolitan": "tokyo",
+    "tokio": "tokyo",  # common alternative spelling
+    "toky0": "tokyo",  # typo with 0 instead of o
+    "tokoy": "tokyo",  # typo
     
     # Berlin variations
     "berlin": "berlin",
     "berlin city": "berlin",
+    "berln": "berlin",  # typo
+    "belin": "berlin",  # typo
+    "berling": "berlin",  # typo
     
-    # Ho Chi Minh City variations
+    # Ho Chi Minh City variations (including typos)
     "hochiminh": "hochiminh",
     "ho chi minh": "hochiminh",
     "ho chi minh city": "hochiminh",
@@ -107,13 +127,25 @@ city_aliases = {
     "saigon": "hochiminh",
     "sai gon": "hochiminh",
     "ho chi minh ville": "hochiminh",
-    "thanh pho ho chi minh": "hochiminh"
+    "thanh pho ho chi minh": "hochiminh",
+    # Common typos
+    "saigone": "hochiminh",
+    "saigon city": "hochiminh",
+    "sigon": "hochiminh",
+    "saigoon": "hochiminh",
+    "ho chi min": "hochiminh",
+    "ho chi ming": "hochiminh",
+    "hochi minh": "hochiminh",
+    "hochimin": "hochiminh",
+    "ho chi mihn": "hochiminh",
+    "hcm": "hochiminh",
+    "hcm city": "hochiminh"
 }
 
 def normalize_city_name(city_input):
     """
     Normalize city name input to match our database keys.
-    Handles various spellings and alternative names.
+    Handles various spellings, alternative names, and typos.
     """
     if not city_input:
         return None
@@ -133,18 +165,62 @@ def normalize_city_name(city_input):
         if normalized in alias or alias in normalized:
             return canonical
     
+    # Fuzzy matching for typos using simple distance-based approach
+    def calculate_similarity(s1, s2):
+        """Calculate similarity between two strings (simple approach)"""
+        if len(s1) == 0 or len(s2) == 0:
+            return 0
+        
+        # Check for common subsequences
+        common_chars = sum(1 for c in s1 if c in s2)
+        max_len = max(len(s1), len(s2))
+        return common_chars / max_len
+    
+    # Try fuzzy matching with city aliases (for typos)
+    best_match = None
+    best_score = 0.6  # Minimum threshold for considering a match
+    
+    for alias, canonical in city_aliases.items():
+        # Skip very short inputs to avoid false positives
+        if len(normalized) < 3:
+            continue
+            
+        similarity = calculate_similarity(normalized, alias)
+        
+        # Also check if most characters match (handling simple typos)
+        if len(normalized) >= 4 and len(alias) >= 4:
+            # Check character overlap for longer strings
+            char_overlap = len(set(normalized) & set(alias)) / len(set(alias))
+            if char_overlap > 0.7:
+                similarity = max(similarity, char_overlap)
+        
+        # Special handling for common typos
+        if (normalized.replace('o', '0') == alias or 
+            normalized.replace('0', 'o') == alias or
+            normalized.replace('i', '1') == alias or
+            normalized.replace('1', 'i') == alias):
+            similarity = 0.9
+            
+        if similarity > best_score:
+            best_score = similarity
+            best_match = canonical
+    
+    # If we found a good match, return it
+    if best_match:
+        return best_match
+    
     # If no match found, return the normalized input
     return normalized
 
 price_function = {
     "name": "get_ticket_price",
-    "description": "Get the price of a return ticket to the destination city. Call this whenever you need to know the ticket price, for example when a customer asks 'How much is a ticket to this city' or wants to compare prices. The function can handle various city name formats including alternative names (e.g., 'Saigon' for 'Ho Chi Minh City').",
+    "description": "Get the price of a return ticket to the destination city. Call this whenever you need to know the ticket price, for example when a customer asks 'How much is a ticket to this city' or wants to compare prices. The function can handle various city name formats, alternative names (e.g., 'Saigon' for 'Ho Chi Minh City'), and common typos (e.g., 'Pris' for 'Paris', 'Tokio' for 'Tokyo').",
     "parameters": {
         "type": "object",
         "properties": {
             "destination_city": {
                 "type": "string",
-                "description": "The city that the customer wants to travel to. Can be in various formats like 'London', 'Ho Chi Minh City', 'Saigon', etc.",
+                "description": "The city that the customer wants to travel to. Can be in various formats like 'London', 'Ho Chi Minh City', 'Saigon', and can handle typos like 'Pris' for 'Paris'.",
             },
         },
         "required": ["destination_city"],
@@ -171,7 +247,10 @@ tools = [
 def get_ticket_price(destination_city):
     print(f"Tool get_ticket_price called for {destination_city}")
     
-    # Normalize the city name to handle various input formats
+    # Store original input for reference
+    original_input = destination_city
+    
+    # Normalize the city name to handle various input formats and typos
     normalized_city = normalize_city_name(destination_city)
     
     if normalized_city in ticket_prices:
@@ -184,13 +263,18 @@ def get_ticket_price(destination_city):
             display_name = "Ho Chi Minh City"
         elif normalized_city in ["london", "paris", "tokyo", "berlin"]:
             display_name = normalized_city.title()
+        
+        # Check if we corrected a typo
+        typo_corrected = original_input.lower().strip() != normalized_city and original_input.lower().strip() not in city_aliases
             
         return {
             "price": price, 
             "destination": display_name, 
+            "original_input": original_input,
             "normalized_key": normalized_city,
             "info": info,
-            "found": True
+            "found": True,
+            "typo_corrected": typo_corrected
         }
     else:
         # Try to suggest similar destinations
@@ -202,10 +286,12 @@ def get_ticket_price(destination_city):
         return {
             "price": "Unknown", 
             "destination": destination_city, 
+            "original_input": original_input,
             "normalized_key": normalized_city,
             "info": f"Destination not found. Available destinations: {', '.join([city.title() for city in ticket_prices.keys()])}",
             "suggestions": suggestions,
-            "found": False
+            "found": False,
+            "typo_corrected": False
         }
 
 def get_all_destinations():
@@ -310,7 +396,9 @@ if __name__ == "__main__":
             "Show me all available destinations",
             "I have a budget of $800, what can you recommend?",
             "Tell me about HCMC",
-            "What's the cheapest destination?"
+            "What's the cheapest destination?",
+            "How much to Pris?",  # Example with typo
+            "Price to Tokio please"  # Another typo example
         ],
         theme="soft"
     )
