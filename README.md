@@ -29,12 +29,24 @@ A sophisticated AI-powered airline assistant built with OpenAI's GPT-4 and Gradi
 - `get_ticket_price()` - Get specific destination pricing with cultural context
 - `get_all_destinations()` - Compare all available destinations and prices
 
+### Flexible City Name Recognition
+
+The AI assistant can understand various city name formats and alternative names:
+
+| Official Name | Alternative Names Supported |
+|---------------|----------------------------|
+| **London** | London City, Greater London |
+| **Paris** | Paris City, City of Light |
+| **Tokyo** | Tokyo City, Tokyo Metropolitan |
+| **Berlin** | Berlin City |
+| **Ho Chi Minh City** | Ho Chi Minh, HCMC, Saigon, Sai Gon, Ho Chi Minh Ville |
+
 ### Multishot Prompting Examples
 
 The AI assistant has been trained with specific examples to handle:
 
-- Direct price inquiries
-- Budget-based travel recommendations
+- Direct price inquiries with flexible city names
+- Budget-based travel recommendations  
 - Destination comparisons and suggestions
 - Cultural information requests
 - Graceful handling of unknown information
@@ -115,6 +127,11 @@ python main.py
 - User: "How much is a ticket to Paris?"
 - Assistant: "I'll check the ticket price to Paris for you. A return ticket to Paris costs $899. Paris is the City of Light, famous for art, fashion, and cuisine!"
 
+**Alternative City Names:**
+
+- User: "What's the price to Saigon?"
+- Assistant: "I'll check the ticket price to Saigon for you. A return ticket to Ho Chi Minh City (Saigon) costs $1500. Ho Chi Minh City is Vietnam's bustling economic hub with rich cultural heritage!"
+
 **Budget Shopping:**
 
 - User: "I have a budget of $800, what can you recommend?"
@@ -155,8 +172,13 @@ The system uses sophisticated prompt engineering with:
 
 ```python
 # Two main functions available to the AI:
-get_ticket_price(destination_city)      # Individual price lookup
+get_ticket_price(destination_city)      # Individual price lookup with city name normalization
 get_all_destinations()                  # Complete destination catalog
+
+# City name normalization handles variations like:
+normalize_city_name("Saigon") → "hochiminh"
+normalize_city_name("HCMC") → "hochiminh" 
+normalize_city_name("Ho Chi Minh City") → "hochiminh"
 ```
 
 ## Configuration
